@@ -44,4 +44,4 @@ jobs:
         uses: gridsuite/broadcast-event@master
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          event-type: merge-notification_server_updated
+          event-type: merge_notification_server_updated
