@@ -6,19 +6,8 @@
  */
 package org.gridsuite.merge.notification.server;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,13 +21,23 @@ import org.springframework.web.reactive.socket.HandshakeInfo;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.util.UriComponentsBuilder;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+
+import java.io.UncheckedIOException;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
@@ -49,7 +48,6 @@ public class MergeNotificationWebSocketHandlerTest {
     private ObjectMapper objectMapper;
     private WebSocketSession ws;
     private HandshakeInfo handshakeinfo;
-    private Flux<Message<String>> flux;
     private UriComponentsBuilder uriComponentBuilder;
 
     @Before
@@ -79,14 +77,11 @@ public class MergeNotificationWebSocketHandlerTest {
 
     }
 
-    private void withFilters(String process, String date) {
+    private void withFilters(String process) {
         var notificationWebSocketHandler = new MergeNotificationWebSocketHandler(objectMapper, Integer.MAX_VALUE);
 
         if (process != null) {
             uriComponentBuilder.queryParam("process", process);
-        }
-        if (date != null) {
-            uriComponentBuilder.queryParam("date", date);
         }
 
         var atomicRef = new AtomicReference<FluxSink<Message<String>>>();
@@ -97,15 +92,9 @@ public class MergeNotificationWebSocketHandlerTest {
         notificationWebSocketHandler.handle(ws);
 
         List<Map<String, Object>> refMessages = Arrays.asList(
-                Map.of("process", "SWE", "date", "2020-07-01 02:30:00.000000+0000"),
-                Map.of("process", "SWE", "date", "2020-07-01 03:30:00.000000+0000"),
-                Map.of("process", "SWE", "date", "2020-07-01 04:30:00.000000+0000"),
-                Map.of("process", "SWE", "date", "2020-07-01 05:30:00.000000+0000"),
-                Map.of("process", "SWE", "date", "2020-07-01 06:30:00.000000+0000"),
-                Map.of("process", "SWE", "date", "2020-07-01 07:30:00.000000+0000"),
-                Map.of("process", "SWE", "date", "2020-07-01 08:30:00.000000+0000"),
-                Map.of("process", "SWE", "date", "2020-07-01 09:30:00.000000+0000"),
-                Map.of("process", "SWE", "date", "2020-07-01 10:30:00.000000+0000")
+                Map.of("process", "SWE", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "type", "TEST"),
+                Map.of("process", "SWE", "date", "2020-07-01 03:30:00.000000+0000", "tso", "RTE", "type", "TEST"),
+                Map.of("process", "CORE", "date", "2020-07-01 04:30:00.000000+0000", "tso", "RTE", "type", "TEST")
         );
 
         @SuppressWarnings("unchecked")
@@ -114,9 +103,7 @@ public class MergeNotificationWebSocketHandlerTest {
         argument.getValue().map(WebSocketMessage::getPayloadAsText).collectList().subscribe(list -> {
             List<Map<String, Object>> expected = refMessages.stream().filter(headers -> {
                 String processValue = (String) headers.get("process");
-                String dateValue = (String) headers.get("date");
-                return (process == null || process.equals(processValue))
-                        && (date == null || date.equals(dateValue));
+                return process == null || process.equals(processValue);
             }).collect(Collectors.toList());
             List<Map<String, Object>> actual = list.stream().map(t -> {
                 try {
@@ -125,34 +112,24 @@ public class MergeNotificationWebSocketHandlerTest {
                     return Map.of("process", deserializedHeaders.get("process"), "date",
                             deserializedHeaders.get("date"));
                 } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
+                    throw new UncheckedIOException(e);
                 }
             }).collect(Collectors.toList());
             assertEquals(expected, actual);
         });
 
-        refMessages.stream().map(headers -> new GenericMessage<String>("", headers)).forEach(sink::next);
+        refMessages.stream().map(headers -> new GenericMessage<>("", headers)).forEach(sink::next);
         sink.complete();
     }
 
     @Test
     public void testWithoutFilter() {
-        withFilters(null, null);
+        withFilters(null);
     }
 
     @Test
     public void testProcessFilter() {
-        withFilters("SWE", null);
-    }
-
-    @Test
-    public void testDateFilter() {
-        withFilters(null, "2020-07-01 06:30:00.000000+0000");
-    }
-
-    @Test
-    public void testProcessAndDateFilter() {
-        withFilters("SWE", "2020-07-01 06:30:00.000000+0000");
+        withFilters("SWE");
     }
 
     @Test

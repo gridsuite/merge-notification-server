@@ -6,13 +6,8 @@
  */
 package org.gridsuite.merge.notification.server;
 
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Map;
-import java.util.function.Consumer;
-import java.util.logging.Level;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.messaging.Message;
@@ -22,13 +17,17 @@ import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.util.UriComponentsBuilder;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import reactor.core.publisher.ConnectableFlux;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.logging.Level;
 
 /**
  * A WebSocketHandler that sends messages from a broker to websockets opened by clients, interleaving with pings to keep connections open.
@@ -78,12 +77,9 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
     /**
      * map from the broker flux to the filtered flux for one websocket client, extracting only relevant fields.
      */
-    private Flux<WebSocketMessage> notificationFlux(WebSocketSession webSocketSession, String process, String date) {
+    private Flux<WebSocketMessage> notificationFlux(WebSocketSession webSocketSession, String process) {
         return flux.transform(f -> {
             Flux<Message<String>> res = f;
-            if (date != null) {
-                res = res.filter(m -> date.equals(m.getHeaders().get(HEADER_DATE)));
-            }
             if (process != null) {
                 res = res.filter(m -> process.equals(m.getHeaders().get(HEADER_PROCESS)));
             }
@@ -99,7 +95,7 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
                                 HEADER_DATE, m.getHeaders().get(HEADER_DATE)));
                 return jacksonObjectMapper.writeValueAsString(submap);
             } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
+                throw new UncheckedIOException(e);
             }
         }).map(webSocketSession::textMessage);
     }
@@ -117,10 +113,9 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
         URI uri = webSocketSession.getHandshakeInfo().getUri();
         MultiValueMap<String, String> parameters = UriComponentsBuilder.fromUri(uri).build().getQueryParams();
         String process = parameters.getFirst(QUERY_PROCESS);
-        String date = parameters.getFirst(QUERY_DATE);
         return webSocketSession
                 .send(
-                        notificationFlux(webSocketSession, process, date)
+                        notificationFlux(webSocketSession, process)
                         .mergeWith(heartbeatFlux(webSocketSession))
                         .log(CATEGORY_WS_OUTPUT, Level.FINE))
                 .and(webSocketSession.receive());
