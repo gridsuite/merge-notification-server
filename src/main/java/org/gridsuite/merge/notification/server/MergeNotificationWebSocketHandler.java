@@ -97,7 +97,7 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
             } catch (JsonProcessingException e) {
                 throw new UncheckedIOException(e);
             }
-        }).map(webSocketSession::textMessage);
+        }).log(CATEGORY_WS_OUTPUT, Level.FINE).map(webSocketSession::textMessage);
     }
 
     /**
@@ -116,8 +116,7 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
         return webSocketSession
                 .send(
                         notificationFlux(webSocketSession, process)
-                        .mergeWith(heartbeatFlux(webSocketSession))
-                        .log(CATEGORY_WS_OUTPUT, Level.FINE))
+                        .mergeWith(heartbeatFlux(webSocketSession)))
                 .and(webSocketSession.receive());
     }
 }
