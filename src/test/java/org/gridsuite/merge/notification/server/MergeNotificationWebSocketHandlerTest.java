@@ -95,9 +95,9 @@ public class MergeNotificationWebSocketHandlerTest {
         notificationWebSocketHandler.handle(ws);
 
         List<Map<String, Object>> refMessages = Arrays.asList(
-                Map.of("process", "SWE", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "type", "TEST"),
-                Map.of("process", "SWE", "date", "2020-07-01 03:30:00.000000+0000", "tso", "RTE", "type", "TEST"),
-                Map.of("process", "CORE", "date", "2020-07-01 04:30:00.000000+0000", "tso", "RTE", "type", "TEST")
+                Map.of("process", "SWE", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
+                Map.of("process", "SWE", "date", "2020-07-01 03:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
+                Map.of("process", "CORE", "date", "2020-07-01 04:30:00.000000+0000", "tso", "RTE", "status", "TEST")
         );
 
         @SuppressWarnings("unchecked")
