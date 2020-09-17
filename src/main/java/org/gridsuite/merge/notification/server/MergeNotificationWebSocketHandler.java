@@ -26,8 +26,10 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 /**
  * A WebSocketHandler that sends messages from a broker to websockets opened by clients, interleaving with pings to keep connections open.
@@ -47,12 +49,12 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
     private static final String CATEGORY_WS_OUTPUT = MergeNotificationWebSocketHandler.class.getName() + ".output-websocket-messages";
 
     private static final String QUERY_PROCESS = "process";
-    private static final String QUERY_DATE = "date";
 
     private static final String HEADER_TSO = "tso";
-    private static final String HEADER_TYPE = "type";
+    private static final String HEADER_STATUS = "status";
     private static final String HEADER_DATE = "date";
     private static final String HEADER_PROCESS = "process";
+    private static final Set<String> HEADERS = Set.of(HEADER_TSO, HEADER_STATUS, HEADER_DATE, HEADER_PROCESS);
 
     private ObjectMapper jacksonObjectMapper;
 
@@ -71,6 +73,10 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
             ConnectableFlux<Message<String>> c = f.log(CATEGORY_BROKER_INPUT, Level.FINE).publish();
             this.flux = c;
             c.connect();
+            // Force connect 1 fake subscriber to consumme messages as they come.
+            // Otherwise, reactorcore buffers some messages (not until the connectable flux had
+            // at least one subscriber. Is there a better way ?
+            c.subscribe();
         };
     }
 
@@ -86,13 +92,13 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
             return res;
         }).map(m -> {
             try {
+                Map<String, Object> headers = m.getHeaders().entrySet()
+                        .stream()
+                        .filter(e -> HEADERS.contains(e.getKey()))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                 Map<String, Object> submap = Map.of(
                         "payload", m.getPayload(),
-                        "headers", Map.of(
-                                HEADER_TSO, m.getHeaders().get(HEADER_TSO),
-                                HEADER_TYPE, m.getHeaders().get(HEADER_TYPE),
-                                HEADER_PROCESS, m.getHeaders().get(HEADER_PROCESS),
-                                HEADER_DATE, m.getHeaders().get(HEADER_DATE)));
+                        "headers", headers);
                 return jacksonObjectMapper.writeValueAsString(submap);
             } catch (JsonProcessingException e) {
                 throw new UncheckedIOException(e);
