@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
  *
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
  * @author Jon Harper <jon.harper at rte-france.com>
+ * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
 @Component
 public class MergeNotificationWebSocketHandler implements WebSocketHandler {
@@ -49,12 +50,14 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
     private static final String CATEGORY_WS_OUTPUT = MergeNotificationWebSocketHandler.class.getName() + ".output-websocket-messages";
 
     private static final String QUERY_PROCESS = "process";
+    private static final String QUERY_BUSINESS_PROCESS = "businessProcess";
 
     private static final String HEADER_TSO = "tso";
     private static final String HEADER_STATUS = "status";
     private static final String HEADER_DATE = "date";
     private static final String HEADER_PROCESS = "process";
-    private static final Set<String> HEADERS = Set.of(HEADER_TSO, HEADER_STATUS, HEADER_DATE, HEADER_PROCESS);
+    private static final String HEADER_BUSINESS_PROCESS = "businessProcess";
+    private static final Set<String> HEADERS = Set.of(HEADER_TSO, HEADER_STATUS, HEADER_DATE, HEADER_PROCESS, HEADER_BUSINESS_PROCESS);
 
     private ObjectMapper jacksonObjectMapper;
 
@@ -83,11 +86,12 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
     /**
      * map from the broker flux to the filtered flux for one websocket client, extracting only relevant fields.
      */
-    private Flux<WebSocketMessage> notificationFlux(WebSocketSession webSocketSession, String process) {
+    private Flux<WebSocketMessage> notificationFlux(WebSocketSession webSocketSession, String process, String businessProcess) {
         return flux.transform(f -> {
             Flux<Message<String>> res = f;
-            if (process != null) {
-                res = res.filter(m -> process.equals(m.getHeaders().get(HEADER_PROCESS)));
+            if (process != null && businessProcess != null) {
+                res = res.filter(m -> process.equals(m.getHeaders().get(HEADER_PROCESS)) &&
+                        businessProcess.equals(m.getHeaders().get(HEADER_BUSINESS_PROCESS)));
             }
             return res;
         }).map(m -> {
@@ -119,9 +123,10 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
         URI uri = webSocketSession.getHandshakeInfo().getUri();
         MultiValueMap<String, String> parameters = UriComponentsBuilder.fromUri(uri).build().getQueryParams();
         String process = parameters.getFirst(QUERY_PROCESS);
+        String businessProcess = parameters.getFirst(QUERY_BUSINESS_PROCESS);
         return webSocketSession
                 .send(
-                        notificationFlux(webSocketSession, process)
+                        notificationFlux(webSocketSession, process, businessProcess)
                         .mergeWith(heartbeatFlux(webSocketSession)))
                 .and(webSocketSession.receive());
     }

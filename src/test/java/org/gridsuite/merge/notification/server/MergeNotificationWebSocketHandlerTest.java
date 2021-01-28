@@ -26,7 +26,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
-import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,6 +44,7 @@ import static org.mockito.Mockito.when;
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
  * @author Jon Harper <jon.harper at rte-france.com>
+ * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
 public class MergeNotificationWebSocketHandlerTest {
 
@@ -62,7 +62,6 @@ public class MergeNotificationWebSocketHandlerTest {
         handshakeinfo = Mockito.mock(HandshakeInfo.class);
         uriComponentBuilder = UriComponentsBuilder.fromUriString("http://localhost:1234/notify");
 
-        when(handshakeinfo.getUri()).thenReturn(uriComponentBuilder.build().toUri());
         when(ws.getHandshakeInfo()).thenReturn(handshakeinfo);
         when(ws.receive()).thenReturn(Flux.empty());
         when(ws.send(any())).thenReturn(Mono.empty());
@@ -80,12 +79,17 @@ public class MergeNotificationWebSocketHandlerTest {
 
     }
 
-    private void withFilters(String process) {
+    private void withFilters(String process, String businessProcess) {
         var notificationWebSocketHandler = new MergeNotificationWebSocketHandler(objectMapper, Integer.MAX_VALUE);
 
         if (process != null) {
             uriComponentBuilder.queryParam("process", process);
         }
+        if (businessProcess != null) {
+            uriComponentBuilder.queryParam("businessProcess", businessProcess);
+        }
+
+        when(handshakeinfo.getUri()).thenReturn(uriComponentBuilder.build().toUri());
 
         var atomicRef = new AtomicReference<FluxSink<Message<String>>>();
         var flux = Flux.create(atomicRef::set);
@@ -95,44 +99,49 @@ public class MergeNotificationWebSocketHandlerTest {
         notificationWebSocketHandler.handle(ws);
 
         List<Map<String, Object>> refMessages = Arrays.asList(
-                Map.of("process", "SWE", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
-                Map.of("process", "SWE", "date", "2020-07-01 03:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
-                Map.of("process", "CORE", "date", "2020-07-01 04:30:00.000000+0000", "tso", "RTE", "status", "TEST")
+                Map.of("process", "SWE", "businessProcess", "1D", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
+                Map.of("process", "SWE", "businessProcess", "2D", "date", "2020-07-01 03:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
+                Map.of("process", "CORE", "businessProcess", "SN", "date", "2020-07-01 04:30:00.000000+0000", "tso", "RTE", "status", "TEST")
         );
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Flux<WebSocketMessage>> argument = ArgumentCaptor.forClass(Flux.class);
         verify(ws).send(argument.capture());
-        argument.getValue().map(WebSocketMessage::getPayloadAsText).collectList().subscribe(list -> {
-            List<Map<String, Object>> expected = refMessages.stream().filter(headers -> {
-                String processValue = (String) headers.get("process");
-                return process == null || process.equals(processValue);
-            }).collect(Collectors.toList());
-            List<Map<String, Object>> actual = list.stream().map(t -> {
-                try {
-                    var deserializedHeaders = ((Map<String, Map<String, Object>>) objectMapper.readValue(t, Map.class))
-                            .get("headers");
-                    return Map.of("process", deserializedHeaders.get("process"), "date",
-                            deserializedHeaders.get("date"));
-                } catch (JsonProcessingException e) {
-                    throw new UncheckedIOException(e);
-                }
-            }).collect(Collectors.toList());
-            assertEquals(expected, actual);
-        });
-
+        List<String> messages = new ArrayList<>();
+        argument.getValue().map(WebSocketMessage::getPayloadAsText).subscribe(messages::add);
         refMessages.stream().map(headers -> new GenericMessage<>("", headers)).forEach(sink::next);
         sink.complete();
+
+        List<Map<String, Object>> expected = refMessages.stream().filter(headers -> {
+            String processValue = (String) headers.get("process");
+            String businessProcessValue = (String) headers.get("businessProcess");
+            return (process == null || process.equals(processValue)) && (businessProcess == null || businessProcess.equals(businessProcessValue));
+        }).collect(Collectors.toList());
+
+        List<Map<String, Object>> actual = messages.stream().map(t -> {
+            try {
+                var deserializedHeaders = ((Map<String, Map<String, Object>>) objectMapper.readValue(t, Map.class)).get("headers");
+                return Map.of("process", deserializedHeaders.get("process"),
+                        "businessProcess", deserializedHeaders.get("businessProcess"),
+                        "date", deserializedHeaders.get("date"),
+                        "status", deserializedHeaders.get("status"),
+                        "tso", deserializedHeaders.get("tso"));
+
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
+        assertEquals(expected, actual);
     }
 
     @Test
     public void testWithoutFilter() {
-        withFilters(null);
+        withFilters(null, null);
     }
 
     @Test
     public void testProcessFilter() {
-        withFilters("SWE");
+        withFilters("SWE", "1D");
     }
 
     @Test
@@ -162,9 +171,9 @@ public class MergeNotificationWebSocketHandlerTest {
         var flux = Flux.create(atomicRef::set);
         notificationWebSocketHandler.consumeNotification().accept(flux);
         var sink = atomicRef.get();
-        Map<String, Object> headers = Map.of("process", "SWE", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "type", "TEST");
+        Map<String, Object> headers = Map.of("process", "SWE", "businessProcess", "1D", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "status", "TEST");
 
-        sink.next(new GenericMessage<String>("", headers)); // should be discarded, no client connected
+        sink.next(new GenericMessage<>("", headers)); // should be discarded, no client connected
 
         notificationWebSocketHandler.handle(ws);
 
@@ -175,7 +184,7 @@ public class MergeNotificationWebSocketHandlerTest {
         Disposable d1 = out1.map(WebSocketMessage::getPayloadAsText).subscribe(messages1::add);
         d1.dispose();
 
-        sink.next(new GenericMessage<String>("", headers)); // should be discarded, first client disconnected
+        sink.next(new GenericMessage<>("", headers)); // should be discarded, first client disconnected
 
         notificationWebSocketHandler.handle(ws);
 
@@ -183,7 +192,7 @@ public class MergeNotificationWebSocketHandlerTest {
         verify(ws, times(2)).send(argument2.capture());
         List<String> messages2 = new ArrayList<String>();
         Flux<WebSocketMessage> out2 = argument2.getValue();
-        Disposable d2 = out1.map(WebSocketMessage::getPayloadAsText).subscribe(messages1::add);
+        Disposable d2 = out2.map(WebSocketMessage::getPayloadAsText).subscribe(messages1::add);
         d2.dispose();
 
         sink.complete();
