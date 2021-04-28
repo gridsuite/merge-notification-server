@@ -27,10 +27,7 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -52,6 +49,9 @@ public class MergeNotificationWebSocketHandlerTest {
     private WebSocketSession ws;
     private HandshakeInfo handshakeinfo;
     private UriComponentsBuilder uriComponentBuilder;
+
+    private static final String SWE_UUID = "11111111-f60e-4766-bc5c-8f312c1984e4";
+    private static final String CORE_UUID = "21111111-f60e-4766-bc5c-8f312c1984e4";
 
     @Before
     public void setup() {
@@ -79,11 +79,11 @@ public class MergeNotificationWebSocketHandlerTest {
 
     }
 
-    private void withFilters(String process, String businessProcess) {
+    private void withFilters(String processUuid, String businessProcess) {
         var notificationWebSocketHandler = new MergeNotificationWebSocketHandler(objectMapper, Integer.MAX_VALUE);
 
-        if (process != null) {
-            uriComponentBuilder.queryParam("process", process);
+        if (processUuid != null) {
+            uriComponentBuilder.queryParam("processUuid", processUuid);
         }
         if (businessProcess != null) {
             uriComponentBuilder.queryParam("businessProcess", businessProcess);
@@ -99,9 +99,9 @@ public class MergeNotificationWebSocketHandlerTest {
         notificationWebSocketHandler.handle(ws);
 
         List<Map<String, Object>> refMessages = Arrays.asList(
-                Map.of("process", "SWE", "businessProcess", "1D", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
-                Map.of("process", "SWE", "businessProcess", "2D", "date", "2020-07-01 03:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
-                Map.of("process", "CORE", "businessProcess", "SN", "date", "2020-07-01 04:30:00.000000+0000", "tso", "RTE", "status", "TEST")
+                Map.of("processUuid", SWE_UUID, "businessProcess", "1D", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
+                Map.of("processUuid", SWE_UUID, "businessProcess", "2D", "date", "2020-07-01 03:30:00.000000+0000", "tso", "RTE", "status", "TEST"),
+                Map.of("processUuid", CORE_UUID, "businessProcess", "SN", "date", "2020-07-01 04:30:00.000000+0000", "tso", "RTE", "status", "TEST")
         );
 
         @SuppressWarnings("unchecked")
@@ -113,15 +113,15 @@ public class MergeNotificationWebSocketHandlerTest {
         sink.complete();
 
         List<Map<String, Object>> expected = refMessages.stream().filter(headers -> {
-            String processValue = (String) headers.get("process");
+            String processValue = (String) headers.get("processUuid");
             String businessProcessValue = (String) headers.get("businessProcess");
-            return (process == null || process.equals(processValue)) && (businessProcess == null || businessProcess.equals(businessProcessValue));
+            return (processUuid == null || processUuid.equals(processValue)) && (businessProcess == null || businessProcess.equals(businessProcessValue));
         }).collect(Collectors.toList());
 
         List<Map<String, Object>> actual = messages.stream().map(t -> {
             try {
                 var deserializedHeaders = ((Map<String, Map<String, Object>>) objectMapper.readValue(t, Map.class)).get("headers");
-                return Map.of("process", deserializedHeaders.get("process"),
+                return Map.of("processUuid", deserializedHeaders.get("processUuid"),
                         "businessProcess", deserializedHeaders.get("businessProcess"),
                         "date", deserializedHeaders.get("date"),
                         "status", deserializedHeaders.get("status"),
@@ -141,7 +141,7 @@ public class MergeNotificationWebSocketHandlerTest {
 
     @Test
     public void testProcessFilter() {
-        withFilters("SWE", "1D");
+        withFilters(SWE_UUID, "1D");
     }
 
     @Test
@@ -171,7 +171,7 @@ public class MergeNotificationWebSocketHandlerTest {
         var flux = Flux.create(atomicRef::set);
         notificationWebSocketHandler.consumeNotification().accept(flux);
         var sink = atomicRef.get();
-        Map<String, Object> headers = Map.of("process", "SWE", "businessProcess", "1D", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "status", "TEST");
+        Map<String, Object> headers = Map.of("processUuid", SWE_UUID, "businessProcess", "1D", "date", "2020-07-01 02:30:00.000000+0000", "tso", "RTE", "status", "TEST");
 
         sink.next(new GenericMessage<>("", headers)); // should be discarded, no client connected
 
