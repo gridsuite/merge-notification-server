@@ -57,7 +57,8 @@ public class MergeNotificationWebSocketHandler implements WebSocketHandler {
     private static final String HEADER_DATE = "date";
     private static final String HEADER_PROCESS_UUID = "processUuid";
     private static final String HEADER_BUSINESS_PROCESS = "businessProcess";
-    private static final Set<String> HEADERS = Set.of(HEADER_TSO, HEADER_STATUS, HEADER_DATE, HEADER_PROCESS_UUID, HEADER_BUSINESS_PROCESS);
+    private static final String HEADER_ERROR = "error";
+    private static final Set<String> HEADERS = Set.of(HEADER_TSO, HEADER_STATUS, HEADER_DATE, HEADER_PROCESS_UUID, HEADER_BUSINESS_PROCESS, HEADER_ERROR);
 
     private ObjectMapper jacksonObjectMapper;
 
