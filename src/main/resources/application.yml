@@ -1,9 +1,12 @@
 spring:
+  profiles:
+    active: default,local
+
   application:
     name: merge-notification-server
 
   rabbitmq:
-    addresses: localhost
+    addresses: rabbitmq
     port: 5672
 
   cloud:
@@ -13,6 +16,3 @@ spring:
       bindings:
         consumeNotification-in-0:
           destination: merge
-
-server:
-  port: 5002
