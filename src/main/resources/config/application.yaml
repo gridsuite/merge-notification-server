@@ -1,13 +1,6 @@
 spring:
-  profiles:
-    active: default,local
-
   application:
     name: merge-notification-server
-
-  rabbitmq:
-    addresses: rabbitmq
-    port: 5672
 
   cloud:
     function:
