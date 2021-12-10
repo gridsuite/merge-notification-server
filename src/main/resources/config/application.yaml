@@ -8,4 +8,4 @@ spring:
     stream:
       bindings:
         consumeNotification-in-0:
-          destination: merge
+          destination: ${powsybl-ws.rabbitmq.destination.prefix:}merge
