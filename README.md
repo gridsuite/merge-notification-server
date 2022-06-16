@@ -1,4 +1,4 @@
-# Merge notification server
+# Merge Notification Server
 
 [![Actions Status](https://github.com/gridsuite/merge-notification-server/workflows/CI/badge.svg)](https://github.com/gridsuite/merge-notification-server/actions)
 [![Coverage Status](https://sonarcloud.io/api/project_badges/measure?project=org.gridsuite%3Amerge-notification-server&metric=coverage)](https://sonarcloud.io/component_measures?id=org.gridsuite%3Amerge-notification-server&metric=coverage)
