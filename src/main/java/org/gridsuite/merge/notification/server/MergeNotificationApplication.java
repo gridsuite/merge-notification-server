@@ -6,7 +6,6 @@
  */
 package org.gridsuite.merge.notification.server;
 
-import com.powsybl.ws.commons.Utils;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -19,7 +18,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class MergeNotificationApplication {
 
     public static void main(String[] args) {
-        Utils.initProperties();
         SpringApplication.run(MergeNotificationApplication.class, args);
     }
 }
