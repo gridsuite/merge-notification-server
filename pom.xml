@@ -48,7 +48,7 @@
     </developers>
 
     <properties>
-        <powsybl-ws-dependencies.version>2.11.0</powsybl-ws-dependencies.version>
+        <powsybl-ws-dependencies.version>2.12.0</powsybl-ws-dependencies.version>
     </properties>
 
     <build>
