@@ -8,8 +8,8 @@ package org.gridsuite.merge.notification.server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -27,23 +27,24 @@ import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
  * @author Jon Harper <jon.harper at rte-france.com>
  * @author Franck Lecuyer <franck.lecuyer at rte-france.com>
  */
-public class MergeNotificationWebSocketHandlerTest {
+class MergeNotificationWebSocketHandlerTest {
 
     private ObjectMapper objectMapper;
     private WebSocketSession ws;
@@ -53,8 +54,8 @@ public class MergeNotificationWebSocketHandlerTest {
     private static final String SWE_UUID = "11111111-f60e-4766-bc5c-8f312c1984e4";
     private static final String CORE_UUID = "21111111-f60e-4766-bc5c-8f312c1984e4";
 
-    @Before
-    public void setup() {
+    @BeforeEach
+    void setup() {
         objectMapper = new ObjectMapper();
         var dataBufferFactory = new DefaultDataBufferFactory();
 
@@ -135,17 +136,17 @@ public class MergeNotificationWebSocketHandlerTest {
     }
 
     @Test
-    public void testWithoutFilter() {
+    void testWithoutFilter() {
         withFilters(null, null);
     }
 
     @Test
-    public void testProcessFilter() {
+    void testProcessFilter() {
         withFilters(SWE_UUID, "1D");
     }
 
     @Test
-    public void testHeartbeat() {
+    void testHeartbeat() {
         var notificationWebSocketHandler = new MergeNotificationWebSocketHandler(null, 1);
 
         when(handshakeinfo.getUri()).thenReturn(uriComponentBuilder.build().toUri());
@@ -160,7 +161,7 @@ public class MergeNotificationWebSocketHandlerTest {
     }
 
     @Test
-    public void testDiscard() {
+    void testDiscard() {
         var notificationWebSocketHandler = new MergeNotificationWebSocketHandler(objectMapper, Integer.MAX_VALUE);
 
         UriComponentsBuilder uriComponentBuilder = UriComponentsBuilder.fromUriString("http://localhost:1234/notify");

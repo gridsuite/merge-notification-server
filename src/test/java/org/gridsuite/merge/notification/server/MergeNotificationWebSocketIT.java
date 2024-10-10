@@ -6,42 +6,37 @@
  */
 package org.gridsuite.merge.notification.server;
 
-import java.net.URI;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.reactive.socket.client.StandardWebSocketClient;
 import org.springframework.web.reactive.socket.client.WebSocketClient;
 
-import static org.junit.Assert.*;
+import java.net.URI;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * @author Chamseddine Benhamed <chamseddine.benhamed at rte-france.com>
  * @author Jon Harper <jon.harper at rte-france.com>
  */
-@RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ContextConfiguration(classes = { MergeNotificationApplication.class })
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = {MergeNotificationApplication.class})
 @DirtiesContext
-public class MergeNotificationWebSocketIT {
+class MergeNotificationWebSocketIT {
 
     @LocalServerPort
     private String port;
 
     @Test
-    public void echo() {
+    void echo() {
         WebSocketClient client = new StandardWebSocketClient();
         assertNotNull(client);
         client.execute(getUrl("/notify"), WebSocketSession::close).block();
     }
 
-    protected URI getUrl(String path) {
+    private URI getUrl(String path) {
         return URI.create("ws://localhost:" + this.port + path);
     }
 }
