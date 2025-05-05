@@ -49,6 +49,8 @@
 
     <properties>
         <gridsuite-dependencies.version>38.1.0-SNAPSHOT</gridsuite-dependencies.version>
+        <sonar.organization>gridsuite</sonar.organization>
+        <sonar.projectKey>org.gridsuite:merge-notification-server</sonar.projectKey>
     </properties>
 
     <build>
